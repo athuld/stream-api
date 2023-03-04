@@ -1,9 +1,7 @@
 package main
 
-import (
-	"streamapi/app"
-)
+import "streamapi/app"
 
-func main(){
-  app.StartApplication()
+func main() {
+	app.StartApplication()
 }
