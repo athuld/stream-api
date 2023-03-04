@@ -11,7 +11,7 @@ var (
 
 func StartApplication() {
 	corsConfig := cors.DefaultConfig()
-  corsConfig.AllowAllOrigins = true
+	corsConfig.AllowAllOrigins = true
 	corsConfig.AllowCredentials = true
 	router.Use(cors.New(corsConfig))
 	mapUrls()
