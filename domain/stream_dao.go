@@ -27,6 +27,36 @@ func (data *Data) AddDataToDB() *errors.RestErr {
 
 }
 
+func GetFileDataFromDB(hash string) (*Data, *errors.RestErr) {
+
+	var data Data
+
+	rows, getErr := datasource.Client.Query("select * from streamdata where hash='" + hash + "'")
+
+	if getErr != nil {
+		logger.Debug.Println(getErr)
+		return nil, errors.NewBadRequestError("Database query error")
+	}
+
+	if rows.Next() {
+		err := rows.Scan(
+			&data.ID,
+			&data.Hash,
+			&data.Filename,
+			&data.DownloadLink,
+			&data.StreamLink,
+			&data.CreatedAt,
+		)
+		if err != nil {
+			logger.Debug.Println(err)
+			return nil, errors.NewBadRequestError("Fetch error")
+		}
+	}
+
+	return &data, nil
+
+}
+
 func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 
 	var data []Data
@@ -34,9 +64,12 @@ func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 	rows, getErr := datasource.Client.Query(
 		"select * from streamdata where filename like '%" + query + "%'",
 	)
-	if !rows.Next() {
-		return &data, nil
+
+	if getErr != nil {
+		logger.Debug.Println(getErr)
+		return nil, errors.NewBadRequestError("Database query error")
 	}
+
 	for rows.Next() {
 		var rowData Data
 		err := rows.Scan(
@@ -52,10 +85,7 @@ func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 		}
 		data = append(data, rowData)
 	}
-	if getErr != nil {
-		logger.Debug.Println(getErr)
-		return nil, errors.NewBadRequestError("Database query error")
-	}
+
 	return &data, nil
 
 }

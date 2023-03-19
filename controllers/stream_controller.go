@@ -28,10 +28,27 @@ func AddStreamData(c *gin.Context) {
 
 }
 
+func GetFileData(c *gin.Context) {
+	hash := c.Query("hash")
+
+	data, err := domain.GetFileDataFromDB(hash)
+	if err != nil {
+		c.JSON(err.Status, err)
+		return
+	}
+	c.JSON(http.StatusOK, data)
+}
+
 func SearchData(c *gin.Context) {
 	query := c.Query("query")
 
+	if query == "" {
+		c.JSON(http.StatusOK, gin.H{})
+		return
+	}
+
 	data, err := domain.SearchDataFromDB(query)
+
 	if err != nil {
 		c.JSON(err.Status, err)
 		return
