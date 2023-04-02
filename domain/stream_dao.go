@@ -31,7 +31,7 @@ func GetFileDataFromDB(hash string) (*Data, *errors.RestErr) {
 
 	var data Data
 
-	rows, getErr := datasource.Client.Query("select * from streamdata where hash='" + hash + "'")
+	rows, getErr := datasource.Client.Query("select id,hash,filename,download_link,stream_link,created_at from streamdata where hash='" + hash + "'")
 
 	if getErr != nil {
 		logger.Debug.Println(getErr)
@@ -62,7 +62,7 @@ func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 	var data []Data
 
 	rows, getErr := datasource.Client.Query(
-		"select * from streamdata where filename like '%" + query + "%'",
+		"select id,hash,filename,download_link,stream_link,created_at from streamdata where filename like '%" + query + "%'",
 	)
 
 	if getErr != nil {
