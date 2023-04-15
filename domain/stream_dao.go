@@ -15,14 +15,26 @@ func (data *Data) AddDataToDB() *errors.RestErr {
 	stmt, err := datasource.Client.Prepare(queryInsert)
 	if err != nil {
 		logger.Debug.Println(err)
+		err := stmt.Close()
+		if err != nil {
+			return errors.NewBadRequestError("Database insert error and row close error")
+		}
 		return errors.NewBadRequestError("Database insert error")
 	}
 
 	_, err = stmt.Exec(data.Hash, data.Filename, data.StreamLink, data.DownloadLink)
 	if err != nil {
+		err := stmt.Close()
+		if err != nil {
+			return errors.NewBadRequestError("Database exec error and row close error")
+		}
 		return errors.NewBadRequestError("Database exec error")
 	}
 
+	err = stmt.Close()
+	if err != nil {
+		return errors.NewBadRequestError("Close error")
+	}
 	return nil
 
 }
@@ -31,10 +43,16 @@ func GetFileDataFromDB(hash string) (*Data, *errors.RestErr) {
 
 	var data Data
 
-	rows, getErr := datasource.Client.Query("select id,hash,filename,download_link,stream_link,created_at from streamdata where hash='" + hash + "'")
+	rows, getErr := datasource.Client.Query(
+		"select id,hash,filename,download_link,stream_link,created_at from streamdata where hash='" + hash + "'",
+	)
 
 	if getErr != nil {
 		logger.Debug.Println(getErr)
+		err := rows.Close()
+		if err != nil {
+			return nil, errors.NewBadRequestError("Database query error and row close error")
+		}
 		return nil, errors.NewBadRequestError("Database query error")
 	}
 
@@ -49,8 +67,17 @@ func GetFileDataFromDB(hash string) (*Data, *errors.RestErr) {
 		)
 		if err != nil {
 			logger.Debug.Println(err)
+			err := rows.Close()
+			if err != nil {
+				return nil, errors.NewBadRequestError("Fetch error and row close error")
+			}
 			return nil, errors.NewBadRequestError("Fetch error")
 		}
+	}
+	err := rows.Close()
+	if err != nil {
+		logger.Debug.Println("Error in closing row")
+		return nil, errors.NewBadRequestError("Close Error")
 	}
 
 	return &data, nil
@@ -67,6 +94,10 @@ func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 
 	if getErr != nil {
 		logger.Debug.Println(getErr)
+		err := rows.Close()
+		if err != nil {
+			return nil, errors.NewBadRequestError("Database query error and row close error")
+		}
 		return nil, errors.NewBadRequestError("Database query error")
 	}
 
@@ -81,9 +112,18 @@ func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 			&rowData.CreatedAt,
 		)
 		if err != nil {
+			err := rows.Close()
+			if err != nil {
+				return nil, errors.NewBadRequestError("Fetch error and row close error")
+			}
 			return nil, errors.NewBadRequestError("Fetch error")
 		}
 		data = append(data, rowData)
+	}
+	err := rows.Close()
+	if err != nil {
+		logger.Debug.Println("Error in closing row")
+		return nil, errors.NewBadRequestError("Close Error")
 	}
 
 	return &data, nil
