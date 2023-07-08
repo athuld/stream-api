@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"strconv"
 	"streamapi/datasource"
 	"streamapi/utils/errors"
 	"streamapi/utils/logger"
@@ -39,13 +40,32 @@ func (data *Data) AddDataToDB() *errors.RestErr {
 
 }
 
-func GetFileDataFromDB(hash string) (*Data, *errors.RestErr) {
+func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *errors.RestErr) {
 
 	var data Data
+	var query string
 
-	rows, getErr := datasource.Client.Query(
-		"select id,hash,filename,download_link,stream_link,created_at from streamdata where hash='" + hash + "'",
-	)
+	if action != "" && ipAddress != "" {
+		currentMessageId, convErr := strconv.Atoi(hash[6:])
+		if convErr != nil {
+			logger.Debug.Println("Error in conversion")
+			return nil, errors.NewBadRequestError("Conversion error")
+		}
+		if action == "next" {
+			currentMessageId += 1
+		} else {
+			currentMessageId -= 1
+		}
+		newMessageId := strconv.Itoa(currentMessageId)
+		searchIpAddress := "'http://" + ipAddress + "/" + newMessageId + "/%'"
+		logger.Debug.Println(searchIpAddress)
+		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where stream_link like " + searchIpAddress
+
+	} else {
+		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where hash='" + hash + "'"
+	}
+
+	rows, getErr := datasource.Client.Query(query)
 
 	if getErr != nil {
 		logger.Debug.Println(getErr)
