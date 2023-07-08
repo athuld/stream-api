@@ -30,8 +30,10 @@ func AddStreamData(c *gin.Context) {
 
 func GetFileData(c *gin.Context) {
 	hash := c.Query("hash")
+	ipAddress := c.Query("ip_address")
+	action := c.Query("action")
 
-	data, err := domain.GetFileDataFromDB(hash)
+	data, err := domain.GetFileDataFromDB(hash,ipAddress,action)
 	if err != nil {
 		c.JSON(err.Status, err)
 		return
