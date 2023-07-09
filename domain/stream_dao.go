@@ -44,22 +44,25 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 
 	var data Data
 	var query string
+	var actionOperator string
+	var orderingMethod string
 
 	if action != "" && ipAddress != "" {
-		currentMessageId, convErr := strconv.Atoi(hash[6:])
+		currentMsgId, convErr := strconv.Atoi(hash[6:])
 		if convErr != nil {
 			logger.Debug.Println("Error in conversion")
 			return nil, errors.NewBadRequestError("Conversion error")
 		}
 		if action == "next" {
-			currentMessageId += 1
+			actionOperator = ">"
+			orderingMethod = "asc"
 		} else {
-			currentMessageId -= 1
+			actionOperator = "<"
+			orderingMethod = "desc"
 		}
-		newMessageId := strconv.Itoa(currentMessageId)
-		searchIpAddress := "'http://" + ipAddress + "/" + newMessageId + "/%'"
-		logger.Debug.Println(searchIpAddress)
-		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where stream_link like " + searchIpAddress
+		currentMgsIdString := strconv.Itoa(currentMsgId)
+		searchIpAddress := "'http://" + ipAddress + "/%'"
+		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where stream_link like " + searchIpAddress + "and SUBSTRING_INDEX(SUBSTRING_INDEX(stream_link, '/', 4), '/', -1) " + actionOperator + "'" + currentMgsIdString + "' order by stream_link " + orderingMethod + " limit 1 "
 
 	} else {
 		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where hash='" + hash + "'"
