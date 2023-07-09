@@ -2,9 +2,11 @@ package datasource
 
 import (
 	"database/sql"
+	"os"
 	"streamapi/utils/logger"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 )
 
 var (
@@ -13,9 +15,13 @@ var (
 
 func init() {
 
+	godotenv.Load()
+	username := os.Getenv("USERNAME")
+	password := os.Getenv("PASSWORD")
+	dbIP := os.Getenv("DB_IP")
 	logger.Info.Println("Setting up database")
 	var err error
-	Client, err = sql.Open("mysql", "root:root@tcp(127.0.0.1:3306)/streamdb")
+	Client, err = sql.Open("mysql", username+":"+password+"@tcp("+dbIP+")/streamdb")
 
 	if err != nil {
 		logger.Error.Println("Databse Setup error")
