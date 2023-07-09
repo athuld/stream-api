@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"strconv"
 	"streamapi/datasource"
 	"streamapi/utils/errors"
 	"streamapi/utils/logger"
@@ -48,11 +47,6 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 	var orderingMethod string
 
 	if action != "" && ipAddress != "" {
-		currentMsgId, convErr := strconv.Atoi(hash[6:])
-		if convErr != nil {
-			logger.Debug.Println("Error in conversion")
-			return nil, errors.NewBadRequestError("Conversion error")
-		}
 		if action == "next" {
 			actionOperator = ">"
 			orderingMethod = "asc"
@@ -60,10 +54,9 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 			actionOperator = "<"
 			orderingMethod = "desc"
 		}
-		currentMgsIdString := strconv.Itoa(currentMsgId)
+		currentMgsId := hash[6:]
 		searchIpAddress := "'http://" + ipAddress + "/%'"
-		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where stream_link like " + searchIpAddress + "and SUBSTRING_INDEX(SUBSTRING_INDEX(stream_link, '/', 4), '/', -1) " + actionOperator + "'" + currentMgsIdString + "' order by stream_link " + orderingMethod + " limit 1 "
-
+		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where stream_link like " + searchIpAddress + "and SUBSTRING_INDEX(SUBSTRING_INDEX(stream_link, '/', 4), '/', -1) " + actionOperator + "'" + currentMgsId + "' and '" + hash + "' in (select hash from streamdata where stream_link like " + searchIpAddress + ") order by stream_link " + orderingMethod + " limit 1 "
 	} else {
 		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where hash='" + hash + "'"
 	}
