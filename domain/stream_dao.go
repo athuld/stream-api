@@ -56,7 +56,7 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 		}
 		currentMgsId := hash[6:]
 		searchIpAddress := "'http://" + ipAddress + "/%'"
-		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where stream_link like " + searchIpAddress + "and SUBSTRING_INDEX(SUBSTRING_INDEX(stream_link, '/', 4), '/', -1) " + actionOperator + "'" + currentMgsId + "' and '" + hash + "' in (select hash from streamdata where stream_link like " + searchIpAddress + ") order by stream_link " + orderingMethod + " limit 1 "
+		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where stream_link like " + searchIpAddress + "and SUBSTRING(hash,7)" + actionOperator + "'" + currentMgsId + "' and '" + hash + "' in (select hash from streamdata where stream_link like " + searchIpAddress + ") order by SUBSTRING(hash,7) " + orderingMethod + " limit 1 "
 	} else {
 		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where hash='" + hash + "'"
 	}
