@@ -146,10 +146,9 @@ func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 
 }
 
-func DeleteFileDataFromDB(hash string, ipAddress string) *errors.RestErr {
+func DeleteFileDataFromDB(hash string) *errors.RestErr {
 
-	searchIpAddress := "'http://" + ipAddress + "/%'"
-	queryDelete := "delete from streamdata where hash='" + hash + "' and stream_link like " + searchIpAddress
+	queryDelete := "delete from streamdata where hash='" + hash + "'"
 
 	stmt, err := datasource.Client.Prepare(queryDelete)
 	if err != nil {

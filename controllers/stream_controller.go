@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"os"
 	"streamapi/domain"
 	"streamapi/utils/errors"
 
@@ -60,9 +61,14 @@ func SearchData(c *gin.Context) {
 }
 
 func DeleteData(c *gin.Context) {
+	refSecret := os.Getenv("REFERER_SECRET")
 	hash := c.Query("hash")
-	ipAddress := c.Query("ip_address")
-	err := domain.DeleteFileDataFromDB(hash, ipAddress)
+	reqRefSecret := c.Query("ref_secret")
+	if refSecret != reqRefSecret {
+		c.JSON(http.StatusForbidden,gin.H{"message":"you are not authorised to do this request"})
+		return
+	}
+	err := domain.DeleteFileDataFromDB(hash)
 	if err != nil {
 		c.JSON(err.Status, err)
 		return
