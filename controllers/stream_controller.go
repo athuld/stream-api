@@ -33,7 +33,7 @@ func GetFileData(c *gin.Context) {
 	ipAddress := c.Query("ip_address")
 	action := c.Query("action")
 
-	data, err := domain.GetFileDataFromDB(hash,ipAddress,action)
+	data, err := domain.GetFileDataFromDB(hash, ipAddress, action)
 	if err != nil {
 		c.JSON(err.Status, err)
 		return
@@ -57,4 +57,15 @@ func SearchData(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, data)
 
+}
+
+func DeleteData(c *gin.Context) {
+	hash := c.Query("hash")
+	ipAddress := c.Query("ip_address")
+	err := domain.DeleteFileDataFromDB(hash, ipAddress)
+	if err != nil {
+		c.JSON(err.Status, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "data deleted from db"})
 }
