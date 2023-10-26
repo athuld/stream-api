@@ -145,3 +145,35 @@ func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 	return &data, nil
 
 }
+
+func DeleteFileDataFromDB(hash string, ipAddress string) *errors.RestErr {
+
+	searchIpAddress := "'http://" + ipAddress + "/%'"
+	queryDelete := "delete from streamdata where hash='" + hash + "' and stream_link like " + searchIpAddress
+
+	stmt, err := datasource.Client.Prepare(queryDelete)
+	if err != nil {
+		logger.Debug.Println(err)
+		return errors.NewBadRequestError("Database delete smt error")
+	}
+	defer stmt.Close()
+
+	result, err := stmt.Exec()
+	if err != nil {
+		logger.Debug.Println(err)
+		return errors.NewBadRequestError("Database delete exec error")
+	}
+
+	rowsEff, err := result.RowsAffected()
+	if err != nil {
+		logger.Debug.Println(err)
+		return errors.NewBadRequestError("Database delete exec error")
+	}
+
+	if rowsEff == 0 {
+		logger.Debug.Println("Rows not affected for delete query")
+		return errors.NewBadRequestError("Delete query didn't affect database")
+	}
+
+	return nil
+}
