@@ -31,6 +31,7 @@ A Golang Gin-Gonic Server to manage stream links from https://github.com/athuld/
   DB_IP=<ip address of the mysql server: along with port>
   USERNAME=<username for db>
   PASSWORD=<password for db>
+  REFERER_SECRET=<random secret shared from frontend for validation>
   ```
 
 * Running the project
