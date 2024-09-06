@@ -4,10 +4,11 @@ import (
 	"streamapi/datasource"
 	"streamapi/utils/errors"
 	"streamapi/utils/logger"
+	"strings"
 )
 
 var (
-	queryInsert = "insert into streamdata(hash,filename,stream_link,download_link) values(?,?,?,?)"
+	queryInsert = "insert into streamdata(hash,filename,stream_link,download_link,has_thumb) values(?,?,?,?,?)"
 )
 
 func (data *Data) AddDataToDB() *errors.RestErr {
@@ -22,7 +23,7 @@ func (data *Data) AddDataToDB() *errors.RestErr {
 		return errors.NewBadRequestError("Database insert error")
 	}
 
-	_, err = stmt.Exec(data.Hash, data.Filename, data.StreamLink, data.DownloadLink)
+	_, err = stmt.Exec(data.Hash, data.Filename, data.StreamLink, data.DownloadLink, data.HasThumb)
 	if err != nil {
 		err := stmt.Close()
 		if err != nil {
@@ -56,9 +57,9 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 		}
 		currentMgsId := hash[6:]
 		searchIpAddress := "'http://" + ipAddress + "/%'"
-		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where stream_link like " + searchIpAddress + "and SUBSTRING(hash,7)" + actionOperator + "'" + currentMgsId + "' and '" + hash + "' in (select hash from streamdata where stream_link like " + searchIpAddress + ") order by SUBSTRING(hash,7) " + orderingMethod + " limit 1 "
+		query = "select id,hash,filename,download_link,stream_link,has_thumb,created_at from streamdata where stream_link like " + searchIpAddress + "and SUBSTRING(hash,7)" + actionOperator + "'" + currentMgsId + "' and '" + hash + "' in (select hash from streamdata where stream_link like " + searchIpAddress + ") order by SUBSTRING(hash,7) " + orderingMethod + " limit 1 "
 	} else {
-		query = "select id,hash,filename,download_link,stream_link,created_at from streamdata where hash='" + hash + "'"
+		query = "select id,hash,filename,download_link,stream_link,has_thumb,created_at from streamdata where hash='" + hash + "'"
 	}
 
 	rows, getErr := datasource.Client.Query(query)
@@ -79,6 +80,7 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 			&data.Filename,
 			&data.DownloadLink,
 			&data.StreamLink,
+			&data.HasThumb,
 			&data.CreatedAt,
 		)
 		if err != nil {
@@ -103,9 +105,10 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 
 	var data []Data
-
+	query_p := strings.ReplaceAll(query, "-", "_")
+	query_p = strings.ReplaceAll(query_p, " ", "_")
 	rows, getErr := datasource.Client.Query(
-		"select id,hash,filename,download_link,stream_link,created_at from streamdata where filename like '%" + query + "%'",
+		"select id,hash,filename,download_link,stream_link,has_thumb,created_at from streamdata where filename like '%" + query + "%' or filename like '%" + query_p + "%'",
 	)
 
 	if getErr != nil {
@@ -125,6 +128,7 @@ func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 			&rowData.Filename,
 			&rowData.DownloadLink,
 			&rowData.StreamLink,
+			&rowData.HasThumb,
 			&rowData.CreatedAt,
 		)
 		if err != nil {

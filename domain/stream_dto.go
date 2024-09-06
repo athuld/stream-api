@@ -6,5 +6,6 @@ type Data struct {
 	Filename     string `json:"filename,omitempty"`
 	StreamLink   string `json:"stream_link,omitempty"`
 	DownloadLink string `json:"download_link,omitempty"`
+	HasThumb     string `json:"has_thumb,omitempty"`
 	CreatedAt    string `json:"created_at,omitempty"`
 }
