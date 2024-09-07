@@ -65,7 +65,7 @@ func DeleteData(c *gin.Context) {
 	hash := c.Query("hash")
 	reqRefSecret := c.Query("ref_secret")
 	if refSecret != reqRefSecret {
-		c.JSON(http.StatusForbidden,gin.H{"message":"you are not authorised to do this request"})
+		c.JSON(http.StatusForbidden, gin.H{"message": "you are not authorised to do this request"})
 		return
 	}
 	err := domain.DeleteFileDataFromDB(hash)

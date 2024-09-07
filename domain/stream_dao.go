@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"encoding/base64"
+	"os"
 	"streamapi/datasource"
 	"streamapi/utils/errors"
 	"streamapi/utils/logger"
@@ -40,6 +42,22 @@ func (data *Data) AddDataToDB() *errors.RestErr {
 
 }
 
+func generateThumbUrlValue(data *Data) {
+	if data.HasThumb != 0 {
+		thumbBaseDir := os.Getenv("THUMB_BASE_DIR")
+		filePath := thumbBaseDir + "/" + data.Hash + ".jpg"
+		if _, err := os.Stat(filePath); err == nil {
+			bytes, err := os.ReadFile(filePath)
+			if err != nil {
+				return
+			}
+			base64Encoding := "data:image/jpeg;base64,"
+			base64Encoding += base64.StdEncoding.EncodeToString(bytes)
+			data.ThumbUrl = base64Encoding
+		}
+	}
+}
+
 func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *errors.RestErr) {
 
 	var data Data
@@ -57,7 +75,7 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 		}
 		currentMgsId := hash[6:]
 		searchIpAddress := "'http://" + ipAddress + "/%'"
-		query = "select id,hash,filename,download_link,stream_link,has_thumb,created_at from streamdata where stream_link like " + searchIpAddress + "and SUBSTRING(hash,7)" + actionOperator + "'" + currentMgsId + "' and '" + hash + "' in (select hash from streamdata where stream_link like " + searchIpAddress + ") order by SUBSTRING(hash,7) " + orderingMethod + " limit 1 "
+		query = "select id,hash,filename,download_link,stream_link,has_thumb,created_at from streamdata where stream_link like " + searchIpAddress + "and SUBSTRING(hash,7)" + actionOperator + " " + currentMgsId + " and '" + hash + "' in (select hash from streamdata where stream_link like " + searchIpAddress + ") order by id " + orderingMethod + " limit 1 "
 	} else {
 		query = "select id,hash,filename,download_link,stream_link,has_thumb,created_at from streamdata where hash='" + hash + "'"
 	}
@@ -97,6 +115,7 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 		logger.Debug.Println("Error in closing row")
 		return nil, errors.NewBadRequestError("Close Error")
 	}
+	generateThumbUrlValue(&data)
 
 	return &data, nil
 
@@ -105,10 +124,10 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 
 	var data []Data
-	query_p := strings.ReplaceAll(query, "-", "_")
-	query_p = strings.ReplaceAll(query_p, " ", "_")
+	queryP := strings.ReplaceAll(query, "-", "_")
+	queryP = strings.ReplaceAll(queryP, " ", "_")
 	rows, getErr := datasource.Client.Query(
-		"select id,hash,filename,download_link,stream_link,has_thumb,created_at from streamdata where filename like '%" + query + "%' or filename like '%" + query_p + "%'",
+		"select id,hash,filename,download_link,stream_link,has_thumb,created_at from streamdata where filename like '%" + query + "%' or filename like '%" + queryP + "%'",
 	)
 
 	if getErr != nil {
@@ -138,6 +157,7 @@ func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 			}
 			return nil, errors.NewBadRequestError("Fetch error")
 		}
+		generateThumbUrlValue(&rowData)
 		data = append(data, rowData)
 	}
 	err := rows.Close()
