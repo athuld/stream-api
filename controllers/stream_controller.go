@@ -14,6 +14,18 @@ func HomeHello(c *gin.Context) {
 }
 
 func AddStreamData(c *gin.Context) {
+	refSecret := os.Getenv("REFERER_SECRET")
+	reqRefSecret := c.Query("ref_secret")
+
+	if refSecret == "" {
+		c.JSON(http.StatusOK, gin.H{})
+		return
+	}
+
+	if refSecret != reqRefSecret {
+		c.JSON(http.StatusForbidden, gin.H{"message": "you are not authorised to do this request"})
+		return
+	}
 	var data domain.Data
 	if err := c.ShouldBindJSON(&data); err != nil {
 		err := errors.NewBadRequestError("Invalid json")
@@ -30,6 +42,18 @@ func AddStreamData(c *gin.Context) {
 }
 
 func GetFileData(c *gin.Context) {
+	refSecret := os.Getenv("REFERER_SECRET")
+	reqRefSecret := c.Query("ref_secret")
+
+	if refSecret == "" {
+		c.JSON(http.StatusOK, gin.H{})
+		return
+	}
+
+	if refSecret != reqRefSecret {
+		c.JSON(http.StatusForbidden, gin.H{"message": "you are not authorised to do this request"})
+		return
+	}
 	hash := c.Query("hash")
 	ipAddress := c.Query("ip_address")
 	action := c.Query("action")
@@ -43,6 +67,18 @@ func GetFileData(c *gin.Context) {
 }
 
 func SearchData(c *gin.Context) {
+	refSecret := os.Getenv("REFERER_SECRET")
+	reqRefSecret := c.Query("ref_secret")
+
+	if refSecret == "" {
+		c.JSON(http.StatusOK, gin.H{})
+		return
+	}
+
+	if refSecret != reqRefSecret {
+		c.JSON(http.StatusForbidden, gin.H{"message": "you are not authorised to do this request"})
+		return
+	}
 	query := c.Query("query")
 
 	if query == "" {
