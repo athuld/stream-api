@@ -60,6 +60,29 @@ func SearchData(c *gin.Context) {
 
 }
 
+func GetRecentSearchData(c *gin.Context) {
+	refSecret := os.Getenv("REFERER_SECRET")
+	reqRefSecret := c.Query("ref_secret")
+
+	if refSecret == "" {
+		c.JSON(http.StatusOK, gin.H{})
+		return
+	}
+
+	if refSecret != reqRefSecret {
+		c.JSON(http.StatusForbidden, gin.H{"message": "you are not authorised to do this request"})
+		return
+	}
+
+	data, err := domain.GetRecentFilesFromDB()
+
+	if err != nil {
+		c.JSON(err.Status, err)
+		return
+	}
+	c.JSON(http.StatusOK, data)
+}
+
 func DeleteData(c *gin.Context) {
 	refSecret := os.Getenv("REFERER_SECRET")
 	hash := c.Query("hash")

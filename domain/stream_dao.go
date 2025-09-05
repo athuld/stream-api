@@ -2,6 +2,7 @@ package domain
 
 import (
 	"encoding/base64"
+	"fmt"
 	"os"
 	"streamapi/datasource"
 	"streamapi/utils/errors"
@@ -56,6 +57,103 @@ func generateThumbUrlValue(data *Data) {
 			data.ThumbUrl = base64Encoding
 		}
 	}
+}
+
+func checkIfFileExistsInDB(hash string) (bool, *errors.RestErr) {
+	existQuery := fmt.Sprintf("select * from streamfrequent where hash='%s'", hash)
+	// Check if already exists
+	rows, getErr := datasource.Client.Query(existQuery)
+	if getErr != nil {
+		logger.Debug.Println(getErr)
+		err := rows.Close()
+		if err != nil {
+			return false, errors.NewBadRequestError("Frequent Database query error and row close error")
+		}
+		return false, errors.NewBadRequestError("Frequent Database query error")
+	}
+
+	if rows.Next() {
+		// Already exists, no need to insert again
+		err := rows.Close()
+		if err != nil {
+			return false, errors.NewBadRequestError("Frequent Database row close error")
+		}
+		return true, nil
+	}
+	err := rows.Close()
+	if err != nil {
+		return false, errors.NewBadRequestError("Frequent Database row close error")
+	}
+	return false, nil
+}
+
+func updateSearchedFileInDB(hash string) *errors.RestErr {
+	//update the search_frequency counter if needed
+	updateQuery := fmt.Sprintf("update streamfrequent set search_frequency = search_frequency + 1 where hash='%s'",hash)
+	stmt, err := datasource.Client.Prepare(updateQuery)
+	if err != nil {
+		logger.Debug.Println(err)
+		err := stmt.Close()
+		if err != nil {
+			return errors.NewBadRequestError("Frequent Database update error and row close error")
+		}
+		return errors.NewBadRequestError("Frequent Database update error")
+	}
+
+	_, err = stmt.Exec()
+	if err != nil {
+		err := stmt.Close()
+		if err != nil {
+			return errors.NewBadRequestError("Frequent Database exec error and row close error")
+		}
+		return errors.NewBadRequestError("Frequent Database exec error")
+	}
+
+	err = stmt.Close()
+	if err != nil {
+		return errors.NewBadRequestError("Close error")
+	}
+	return nil
+
+}
+
+func addSearchedFileToDB(data *Data) *errors.RestErr {
+	// Check if already exists
+	exists, gErr := checkIfFileExistsInDB(data.Hash)
+	if gErr != nil {
+		return gErr
+	}
+	if exists {
+		// If exists, update the search frequency counter
+		return updateSearchedFileInDB(data.Hash)
+	}
+
+	// If not exists, insert new record
+	insertQuery := "insert into streamfrequent(hash) values (?)"
+	stmt, err := datasource.Client.Prepare(insertQuery)
+	if err != nil {
+		logger.Debug.Println(err)
+		err := stmt.Close()
+		if err != nil {
+			return errors.NewBadRequestError("Frequent Database insert error and row close error")
+		}
+		return errors.NewBadRequestError("Frequent Database insert error")
+	}
+
+	_, err = stmt.Exec(data.Hash)
+	if err != nil {
+		err := stmt.Close()
+		if err != nil {
+			return errors.NewBadRequestError("Frequent Database exec error and row close error")
+		}
+		return errors.NewBadRequestError("Frequent Database exec error")
+	}
+
+	err = stmt.Close()
+	if err != nil {
+		return errors.NewBadRequestError("Close error")
+	}
+	return nil
 }
 
 func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *errors.RestErr) {
@@ -121,6 +219,53 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 
 }
 
+func GetRecentFilesFromDB() (*[]Data, *errors.RestErr) {
+	
+	var data []Data
+	rows, getErr := datasource.Client.Query(
+		"select s.hash,filename,download_link,stream_link,has_thumb,sf.created_at,sf.updated_at from streamdata s inner join streamfrequent sf where s.hash=sf.hash",
+	)
+
+	if getErr != nil {
+		logger.Debug.Println(getErr)
+		err := rows.Close()
+		if err != nil {
+			return nil, errors.NewBadRequestError("Database query error and row close error")
+		}
+		return nil, errors.NewBadRequestError("Database query error")
+	}
+
+	for rows.Next() {
+		var rowData Data
+		err := rows.Scan(
+			&rowData.Hash,
+			&rowData.Filename,
+			&rowData.DownloadLink,
+			&rowData.StreamLink,
+			&rowData.HasThumb,
+			&rowData.CreatedAt,
+			&rowData.UpdatedAt,
+		)
+		if err != nil {
+			err := rows.Close()
+			if err != nil {
+				return nil, errors.NewBadRequestError("Fetch error and row close error")
+			}
+			return nil, errors.NewBadRequestError("Fetch error")
+		}
+		generateThumbUrlValue(&rowData)
+		data = append(data, rowData)
+	}
+	err := rows.Close()
+	if err != nil {
+		logger.Debug.Println("Error in closing row")
+		return nil, errors.NewBadRequestError("Close Error")
+	}
+
+	return &data, nil
+
+}
+
 func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 
 	var data []Data
@@ -159,6 +304,7 @@ func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 		}
 		generateThumbUrlValue(&rowData)
 		data = append(data, rowData)
+		addSearchedFileToDB(&rowData)
 	}
 	err := rows.Close()
 	if err != nil {

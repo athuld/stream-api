@@ -9,4 +9,5 @@ type Data struct {
 	HasThumb     int    `json:"has_thumb,omitempty"`
 	ThumbUrl     string `json:"thumb_url,omitempty"`
 	CreatedAt    string `json:"created_at,omitempty"`
+	UpdatedAt    string `json:"updated_at,omitempty"`
 }
