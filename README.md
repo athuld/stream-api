@@ -9,7 +9,7 @@ A Golang Gin-Gonic Server to manage stream links from https://github.com/athuld/
 
 * Setting up database
 
-  First the MySQL database needs to be setup. Create a database with the name `streamdb` and create a table `streamdata` with following columns
+  * First the MySQL database needs to be setup. Create a database with the name `streamdb` and create a table `streamdata` with following columns
 
   ```
   +---------------+--------------+------+-----+-------------------+-------------------+
@@ -23,6 +23,21 @@ A Golang Gin-Gonic Server to manage stream links from https://github.com/athuld/
   | created_at    | timestamp    | NO   |     | CURRENT_TIMESTAMP | DEFAULT_GENERATED |
   +---------------+--------------+------+-----+-------------------+-------------------+
   ```
+
+  * `streamfrequent` table to track the searchdata code
+
+  ```
+  +------------------+--------------+------+-----+-------------------+-----------------------------------------------+
+  | Field            | Type         | Null | Key | Default           | Extra                                         |
+  +------------------+--------------+------+-----+-------------------+-----------------------------------------------+
+  | id               | int unsigned | NO   | PRI | NULL              | auto_increment                                |
+  | created_at       | timestamp    | NO   |     | CURRENT_TIMESTAMP | DEFAULT_GENERATED                             |
+  | hash             | varchar(255) | YES  |     | NULL              |                                               |
+  | search_frequency | int          | YES  |     | 1                 |                                               |
+  | updated_at       | timestamp    | YES  |     | CURRENT_TIMESTAMP | DEFAULT_GENERATED on update CURRENT_TIMESTAMP |
+  +------------------+--------------+------+-----+-------------------+-----------------------------------------------+
+  ```
+
 * Environmental variables
 
   Create a `.env` file in the root of the project and add the following variables
