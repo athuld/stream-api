@@ -223,7 +223,7 @@ func GetRecentFilesFromDB() (*[]Data, *errors.RestErr) {
 	
 	var data []Data
 	rows, getErr := datasource.Client.Query(
-		"select s.hash,filename,download_link,stream_link,has_thumb,sf.created_at,sf.updated_at from streamdata s inner join streamfrequent sf where s.hash=sf.hash",
+		"select s.hash,filename,download_link,stream_link,has_thumb,sf.created_at,sf.updated_at,search_frequency from streamdata s inner join streamfrequent sf where s.hash=sf.hash",
 	)
 
 	if getErr != nil {
@@ -245,6 +245,7 @@ func GetRecentFilesFromDB() (*[]Data, *errors.RestErr) {
 			&rowData.HasThumb,
 			&rowData.CreatedAt,
 			&rowData.UpdatedAt,
+			&rowData.SearchFrequency,
 		)
 		if err != nil {
 			err := rows.Close()
