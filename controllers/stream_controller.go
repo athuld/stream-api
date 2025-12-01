@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"os"
+	"strconv"
 	"streamapi/domain"
 	"streamapi/utils/errors"
 
@@ -110,7 +111,28 @@ func GetRecentSearchData(c *gin.Context) {
 		return
 	}
 
-	data, err := domain.GetRecentFilesFromDB()
+	var pageNumber, limitQuery int
+	page := c.Query("page")
+	limit := c.Query("limit")
+	var convErr error
+	if page == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "'page' is a required query parameter"})
+		return
+	} else {
+		pageNumber, convErr = strconv.Atoi(page)
+	}
+
+	if limit == "" {
+		limitQuery = 10
+	} else {
+		limitQuery, convErr = strconv.Atoi(limit)
+		if convErr != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "int conversion error"})
+			return
+		}
+	}
+
+	data, err := domain.GetRecentFilesFromDB(pageNumber, limitQuery)
 
 	if err != nil {
 		c.JSON(err.Status, err)

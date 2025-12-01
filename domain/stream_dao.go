@@ -67,7 +67,9 @@ func checkIfFileExistsInDB(hash string) (bool, *errors.RestErr) {
 		logger.Debug.Println(getErr)
 		err := rows.Close()
 		if err != nil {
-			return false, errors.NewBadRequestError("Frequent Database query error and row close error")
+			return false, errors.NewBadRequestError(
+				"Frequent Database query error and row close error",
+			)
 		}
 		return false, errors.NewBadRequestError("Frequent Database query error")
 	}
@@ -89,7 +91,10 @@ func checkIfFileExistsInDB(hash string) (bool, *errors.RestErr) {
 
 func updateSearchedFileInDB(hash string) *errors.RestErr {
 	//update the search_frequency counter if needed
-	updateQuery := fmt.Sprintf("update streamfrequent set search_frequency = search_frequency + 1 where hash='%s'",hash)
+	updateQuery := fmt.Sprintf(
+		"update streamfrequent set search_frequency = search_frequency + 1 where hash='%s'",
+		hash,
+	)
 	stmt, err := datasource.Client.Prepare(updateQuery)
 	if err != nil {
 		logger.Debug.Println(err)
@@ -219,11 +224,15 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 
 }
 
-func GetRecentFilesFromDB() (*[]Data, *errors.RestErr) {
-	
+func GetRecentFilesFromDB(page int, limit int) (*[]Data, *errors.RestErr) {
+
 	var data []Data
-	rows, getErr := datasource.Client.Query(
-		"select s.hash,filename,download_link,stream_link,has_thumb,sf.created_at,sf.updated_at,search_frequency from streamdata s inner join streamfrequent sf where s.hash=sf.hash",
+	offset := (page - 1) * limit
+	rows, getErr := datasource.Client.Query(fmt.Sprintf(
+		"select s.hash,filename,download_link,stream_link,has_thumb,sf.created_at,sf.updated_at,search_frequency from streamdata s inner join streamfrequent sf where s.hash=sf.hash order by sf.updated_at limit %d,%d",
+		offset,
+		limit,
+	),
 	)
 
 	if getErr != nil {
