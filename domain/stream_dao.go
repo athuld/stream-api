@@ -224,12 +224,24 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 
 }
 
-func GetRecentFilesFromDB(page int, limit int) (*[]Data, *errors.RestErr) {
+func GetRecentFilesFromDB(page int, limit int, sort string) (*[]Data, *errors.RestErr) {
 
 	var data []Data
 	offset := (page - 1) * limit
+	sortOption := ""
+
+	switch sort {
+	case "searched":
+		sortOption += "search_frequency desc"
+	case "oldest":
+		sortOption += "sf.updated_at asc"
+	default:
+		sortOption += "sf.updated_at desc"
+	}
+
 	rows, getErr := datasource.Client.Query(fmt.Sprintf(
-		"select s.hash,filename,download_link,stream_link,has_thumb,sf.created_at,sf.updated_at,search_frequency from streamdata s inner join streamfrequent sf where s.hash=sf.hash order by sf.updated_at limit %d,%d",
+		"select s.hash,filename,download_link,stream_link,has_thumb,sf.created_at,sf.updated_at,search_frequency from streamdata s inner join streamfrequent sf where s.hash=sf.hash order by %s limit %d,%d",
+		sortOption,
 		offset,
 		limit,
 	),
@@ -271,7 +283,7 @@ func GetRecentFilesFromDB(page int, limit int) (*[]Data, *errors.RestErr) {
 		logger.Debug.Println("Error in closing row")
 		return nil, errors.NewBadRequestError("Close Error")
 	}
-
+	
 	return &data, nil
 
 }

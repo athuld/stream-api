@@ -114,6 +114,7 @@ func GetRecentSearchData(c *gin.Context) {
 	var pageNumber, limitQuery int
 	page := c.Query("page")
 	limit := c.Query("limit")
+	sort := c.Query("sort")
 	var convErr error
 	if page == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "'page' is a required query parameter"})
@@ -132,12 +133,17 @@ func GetRecentSearchData(c *gin.Context) {
 		}
 	}
 
-	data, err := domain.GetRecentFilesFromDB(pageNumber, limitQuery)
+	data, err := domain.GetRecentFilesFromDB(pageNumber, limitQuery,sort)
 
 	if err != nil {
 		c.JSON(err.Status, err)
 		return
 	}
+	if len(*data) == 0 {
+		c.JSON(http.StatusOK, []domain.Data{})
+		return
+	}
+
 	c.JSON(http.StatusOK, data)
 }
 
