@@ -1,4 +1,4 @@
-package domain
+package structs
 
 type Data struct {
 	ID              int64  `json:"id,omitempty"`

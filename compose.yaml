@@ -1,0 +1,57 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: go_app
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_ADDR=redis:6379
+      - THUMBNAILS_DIR=/app/thumbnails
+      - REFERER_SECRET=${REFERER_SECRET}
+    volumes:
+      - ${THUMB_BASE_DIR}:/app/thumbnails:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles: ["prod"]
+
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: go_app_dev
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_ADDR=redis:6379
+      - THUMBNAILS_DIR=/app/thumbnails
+    volumes:
+      - .:/app
+      - ${THUMB_BASE_DIR}:/app/thumbnails:ro
+      - go-cache:/root/.cache
+    depends_on:
+      redis:
+        condition: service_healthy
+    profiles: ["dev"]
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  go-cache:

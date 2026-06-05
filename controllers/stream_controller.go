@@ -5,7 +5,9 @@ import (
 	"os"
 	"strconv"
 	"streamapi/domain"
+	"streamapi/structs"
 	"streamapi/utils/errors"
+	"streamapi/utils/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -47,6 +49,7 @@ func GetFileData(c *gin.Context) {
 	reqRefSecret := c.Query("ref_secret")
 
 	if refSecret == "" {
+		logger.Debug.Println("=== Query param missing ===")
 		c.JSON(http.StatusOK, gin.H{})
 		return
 	}
@@ -55,15 +58,25 @@ func GetFileData(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"message": "you are not authorised to do this request"})
 		return
 	}
-	hash := c.Query("hash")
-	ipAddress := c.Query("ip_address")
-	action := c.Query("action")
+	var queryParams structs.QueryParams
+	queryParams.Hash = c.Query("hash")
+	queryParams.IPAddress = c.Query("ip_address")
+	queryParams.Action = c.Query("action")
 
-	data, err := domain.GetFileDataFromDB(hash, ipAddress, action)
+	data, err, cacheHeaders := domain.GetFileDataFromDB(c,queryParams)
 	if err != nil {
 		c.JSON(err.Status, err)
 		return
 	}
+	
+	if cacheHeaders.CacheHit {
+		c.Header("Cache-Status", "HIT")
+		c.Header("X-Cache-Key", cacheHeaders.CacheKey)
+		c.JSON(http.StatusOK, data)
+		return
+	}
+
+	c.Header("Cache-Status", "MISS")
 	c.JSON(http.StatusOK, data)
 }
 
@@ -133,7 +146,7 @@ func GetRecentSearchData(c *gin.Context) {
 		}
 	}
 
-	data, err := domain.GetRecentFilesFromDB(pageNumber, limitQuery,sort)
+	data, err := domain.GetRecentFilesFromDB(pageNumber, limitQuery, sort)
 
 	if err != nil {
 		c.JSON(err.Status, err)

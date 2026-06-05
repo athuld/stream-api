@@ -6,8 +6,8 @@
             "type": "go",
             "request": "launch",
             "mode": "debug",
+            "envFile": "${workspaceFolder}/.env", // Optional: Path to environment variables file
             "program": "${workspaceFolder}/main.go", // Adjust path to your main.go
-            "envFile": "${workspaceFolder}/.env" // Optional: Path to environment variables file
         }
     ]
 }

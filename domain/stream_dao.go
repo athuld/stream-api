@@ -5,14 +5,20 @@ import (
 	"fmt"
 	"os"
 	"streamapi/datasource"
+	"streamapi/structs"
+	"streamapi/utils/cache"
 	"streamapi/utils/errors"
 	"streamapi/utils/logger"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 var (
 	queryInsert = "insert into streamdata(hash,filename,stream_link,download_link,has_thumb) values(?,?,?,?,?)"
 )
+
+type Data structs.Data
 
 func (data *Data) AddDataToDB() *errors.RestErr {
 
@@ -43,9 +49,12 @@ func (data *Data) AddDataToDB() *errors.RestErr {
 
 }
 
-func generateThumbUrlValue(data *Data) {
+func generateThumbUrlValue(data *structs.Data) {
 	if data.HasThumb != 0 {
-		thumbBaseDir := os.Getenv("THUMB_BASE_DIR")
+		thumbBaseDir := os.Getenv("THUMBNAILS_DIR")
+		if thumbBaseDir == ""{
+			thumbBaseDir = os.Getenv("THUMB_BASE_DIR")
+		}
 		filePath := thumbBaseDir + "/" + data.Hash + ".jpg"
 		if _, err := os.Stat(filePath); err == nil {
 			bytes, err := os.ReadFile(filePath)
@@ -122,7 +131,7 @@ func updateSearchedFileInDB(hash string) *errors.RestErr {
 
 }
 
-func addSearchedFileToDB(data *Data) *errors.RestErr {
+func addSearchedFileToDB(data *structs.Data) *errors.RestErr {
 	// Check if already exists
 	exists, gErr := checkIfFileExistsInDB(data.Hash)
 	if gErr != nil {
@@ -161,9 +170,36 @@ func addSearchedFileToDB(data *Data) *errors.RestErr {
 	return nil
 }
 
-func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *errors.RestErr) {
+func GetFileDataFromDB(
+	c *gin.Context,
+	queryParams structs.QueryParams,
+) (*structs.Data, *errors.RestErr, *structs.CacheHeaders) {
 
-	var data Data
+	var cacheHeaders structs.CacheHeaders
+	cacheHeaders.CacheHit = false
+
+	hash := queryParams.Hash
+	ipAddress := queryParams.IPAddress
+	action := queryParams.Action
+
+
+	// Check for cached data first
+	ctx := c.Request.Context()
+	if action != "" {
+		cacheHeaders.CacheKey = cache.CreateNavCacheKey(hash, action)
+	} else {
+		cacheHeaders.CacheKey = cache.CreateRecordCacheKey(hash)
+	}
+
+	cachedData, hit := cache.GetSingleDataFromCache(ctx, cacheHeaders.CacheKey)
+	// Cache HIT: Return Cached Data
+	if hit {
+		cacheHeaders.CacheHit = true
+		return cachedData, nil, &cacheHeaders
+	}
+
+	// Cache MISS : Move on to regular flow
+	var data structs.Data
 	var query string
 	var actionOperator string
 	var orderingMethod string
@@ -189,9 +225,9 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 		logger.Debug.Println(getErr)
 		err := rows.Close()
 		if err != nil {
-			return nil, errors.NewBadRequestError("Database query error and row close error")
+			return nil, errors.NewBadRequestError("Database query error and row close error"), &cacheHeaders
 		}
-		return nil, errors.NewBadRequestError("Database query error")
+		return nil, errors.NewBadRequestError("Database query error"), &cacheHeaders
 	}
 
 	if rows.Next() {
@@ -208,25 +244,28 @@ func GetFileDataFromDB(hash string, ipAddress string, action string) (*Data, *er
 			logger.Debug.Println(err)
 			err := rows.Close()
 			if err != nil {
-				return nil, errors.NewBadRequestError("Fetch error and row close error")
+				return nil, errors.NewBadRequestError("Fetch error and row close error"), &cacheHeaders
 			}
-			return nil, errors.NewBadRequestError("Fetch error")
+			return nil, errors.NewBadRequestError("Fetch error"), &cacheHeaders
 		}
 	}
 	err := rows.Close()
 	if err != nil {
 		logger.Debug.Println("Error in closing row")
-		return nil, errors.NewBadRequestError("Close Error")
+		return nil, errors.NewBadRequestError("Close Error"), &cacheHeaders
 	}
 	generateThumbUrlValue(&data)
 
-	return &data, nil
+	// Set data to redis
+	cache.SetDataToCache(ctx, cacheHeaders.CacheKey, data)
+
+	return &data, nil, &cacheHeaders
 
 }
 
-func GetRecentFilesFromDB(page int, limit int, sort string) (*[]Data, *errors.RestErr) {
+func GetRecentFilesFromDB(page int, limit int, sort string) (*[]structs.Data, *errors.RestErr) {
 
-	var data []Data
+	var data []structs.Data
 	offset := (page - 1) * limit
 	sortOption := ""
 
@@ -257,7 +296,7 @@ func GetRecentFilesFromDB(page int, limit int, sort string) (*[]Data, *errors.Re
 	}
 
 	for rows.Next() {
-		var rowData Data
+		var rowData structs.Data
 		err := rows.Scan(
 			&rowData.Hash,
 			&rowData.Filename,
@@ -283,14 +322,14 @@ func GetRecentFilesFromDB(page int, limit int, sort string) (*[]Data, *errors.Re
 		logger.Debug.Println("Error in closing row")
 		return nil, errors.NewBadRequestError("Close Error")
 	}
-	
+
 	return &data, nil
 
 }
 
-func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
+func SearchDataFromDB(query string) (*[]structs.Data, *errors.RestErr) {
 
-	var data []Data
+	var data []structs.Data
 	queryP := strings.ReplaceAll(query, "-", "_")
 	queryP = strings.ReplaceAll(queryP, " ", "_")
 	rows, getErr := datasource.Client.Query(
@@ -307,7 +346,7 @@ func SearchDataFromDB(query string) (*[]Data, *errors.RestErr) {
 	}
 
 	for rows.Next() {
-		var rowData Data
+		var rowData structs.Data
 		err := rows.Scan(
 			&rowData.ID,
 			&rowData.Hash,
